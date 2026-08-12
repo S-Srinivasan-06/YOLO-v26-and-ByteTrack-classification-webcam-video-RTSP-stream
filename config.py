@@ -15,3 +15,5 @@ TARGET       = "count"          # what to forecast: "count" | "wcount" | "cov"
 LOG_CSV      = "log.csv"
 MODEL_FILE   = "crowd_gbm.joblib"
 SHOW         = True             # set False for headless servers
+SAVE_VIDEO   = True             # save annotated output video
+OUTPUT_VIDEO = "output.mp4"     # output video path

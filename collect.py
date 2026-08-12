@@ -17,7 +17,7 @@ def main():
     last_log, rows = 0.0, []
 
     out = None
-    if C.SAVE_VIDEO if hasattr(C, 'SAVE_VIDEO') else True:
+    if getattr(C, "SAVE_VIDEO", True):
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out_path = getattr(C, 'OUTPUT_VIDEO', 'output.mp4')
         out = cv2.VideoWriter(out_path, fourcc, 30.0, (W, H))
