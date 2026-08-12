@@ -16,11 +16,21 @@ def main():
     H = W = 1
     last_log, rows = 0.0, []
 
+    out = None
+    if C.SAVE_VIDEO if hasattr(C, 'SAVE_VIDEO') else True:
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out_path = getattr(C, 'OUTPUT_VIDEO', 'output.mp4')
+        out = cv2.VideoWriter(out_path, fourcc, 30.0, (W, H))
+
     while True:
         ok, frame = cap.read()
         if not ok:
             break
         H, W = frame.shape[:2]
+        if out is None:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out_path = getattr(C, 'OUTPUT_VIDEO', 'output.mp4')
+            out = cv2.VideoWriter(out_path, fourcc, 30.0, (W, H))
         t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0 if is_video else time.time()
 
         res = model.track(frame, persist=True, tracker=C.TRACKER, verbose=False)[0]
@@ -38,16 +48,22 @@ def main():
             rows.append([t] + buf.vector(t))
             last_log = t
 
+        for b in boxes.astype(int):
+            cv2.rectangle(frame, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)
+        cv2.putText(frame, f"n={feat['count']}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        if out is not None:
+            out.write(frame)
+
         if C.SHOW:
-            for b in boxes.astype(int):
-                cv2.rectangle(frame, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)
-            cv2.putText(frame, f"n={feat['count']}", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             cv2.imshow("collect", frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
 
     cap.release()
+    if out is not None:
+        out.release()
     if C.SHOW:
         cv2.destroyAllWindows()
     with open(C.LOG_CSV, "w", newline="") as fh:
