@@ -1,21 +1,15 @@
-# Python virtual environment
 venv/
 .venv/
-ENV/
-env/
-
-# Python cache & compiled files
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-
-# IDE / OS settings
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
-
-# Logs and databases
 *.log
-*.sqlite3
+*.pt
+*.onnx
+*.engine
+log.csv
+*.mp4
+output*/
+crowd_gbm.joblib

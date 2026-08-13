@@ -1,111 +1,80 @@
-# features.py
-"""Uncalibrated crowd features from YOLO person boxes + track IDs."""
-import numpy as np
+"""Detection density features and KLT-only motion features."""
 from collections import deque
+
+import numpy as np
+
 from config import GRID
 
 FEATURE_COLS = (
     ["count", "cov", "wcount", "speed", "dirx", "diry", "consist"]
-    + [f"lag{s}" for s in (10, 30, 60, 120)]
-    + ["trend"]
     + [f"g{i}" for i in range(GRID * GRID)]
 )
-LAGS = (10, 30, 60, 120)
 
 
 class TrackStore:
-    """Keeps short centroid history per track ID for velocity estimation."""
+    """Centroid history for KLT points; never used to determine the count."""
 
     def __init__(self, maxlen=30, max_age=10.0):
         self.tracks, self.last_seen = {}, {}
         self.maxlen, self.max_age = maxlen, max_age
 
-    def update(self, t, boxes, ids):
-        for b, tid in zip(boxes, ids):
-            dq = self.tracks.get(tid)
-            if dq is None:
-                dq = self.tracks[tid] = deque(maxlen=self.maxlen)
-            dq.append((t, (b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0))
-            self.last_seen[tid] = t
-        for k in [k for k, ts in self.last_seen.items() if t - ts > self.max_age]:
-            del self.tracks[k], self.last_seen[k]
+    def update_points(self, t, point_ids, points):
+        for point_id, (x, y) in zip(point_ids, points):
+            self.tracks.setdefault(int(point_id), deque(maxlen=self.maxlen)).append(
+                (t, float(x), float(y))
+            )
+            self.last_seen[int(point_id)] = t
+        stale = [key for key, seen in self.last_seen.items() if t - seen > self.max_age]
+        for key in stale:
+            del self.tracks[key]
+            del self.last_seen[key]
 
-    def velocity(self, tid, min_dt=0.2):
-        h = self.tracks.get(tid)
-        if not h or len(h) < 2:
+    def velocity(self, point_id, min_dt=0.2):
+        history = self.tracks.get(int(point_id))
+        if history is None or len(history) < 2:
             return None
-        t0, x0, y0 = h[0]
-        t1, x1, y1 = h[-1]
+        t0, x0, y0 = history[0]
+        t1, x1, y1 = history[-1]
         dt = t1 - t0
         if dt < min_dt:
             return None
         return (x1 - x0) / dt, (y1 - y0) / dt
 
 
-def frame_features(t, boxes, ids, store, H, W):
-    """Scalar + grid features for one frame. No camera calibration needed."""
-    f = {"count": len(boxes)}
+def detection_features(boxes, height, width):
+    """Count and spatial values from the most recent head-detector boxes."""
+    feature = {"count": int(len(boxes))}
     if len(boxes) == 0:
-        f.update(cov=0.0, wcount=0.0, speed=0.0, dirx=0.0, diry=0.0, consist=0.0)
-        f.update({f"g{i}": 0 for i in range(GRID * GRID)})
-        return f
+        feature.update(cov=0.0, wcount=0.0)
+        feature.update({f"g{i}": 0.0 for i in range(GRID * GRID)})
+        return feature
 
-    cx = (boxes[:, 0] + boxes[:, 2]) / 2.0
-    cy = (boxes[:, 1] + boxes[:, 3]) / 2.0
+    centers_x = (boxes[:, 0] + boxes[:, 2]) / 2.0
+    centers_y = (boxes[:, 1] + boxes[:, 3]) / 2.0
+    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    feature["cov"] = float(areas.sum() / (height * width))
+    feature["wcount"] = float((centers_y / height).sum())
 
-    # density proxies (uncalibrated)
-    f["cov"]    = float(((boxes[:, 2] - boxes[:, 0]) *
-                         (boxes[:, 3] - boxes[:, 1])).sum() / (H * W))
-    f["wcount"] = float((cy / H).sum())          # depth-weighted count
-
-    # 4x4 spatial grid counts
-    g = np.zeros(GRID * GRID)
-    gx = np.clip((cx / W * GRID).astype(int), 0, GRID - 1)
-    gy = np.clip((cy / H * GRID).astype(int), 0, GRID - 1)
-    for x, y in zip(gx, gy):
-        g[y * GRID + x] += 1
-    f.update({f"g{i}": float(g[i]) for i in range(GRID * GRID)})
-
-    # crowd velocity (pixel space; valid for fixed camera)
-    v = [store.velocity(tid) for tid in ids]
-    v = np.array([x for x in v if x is not None])
-    if len(v):
-        s  = np.linalg.norm(v, axis=1)
-        uv = v / (s[:, None] + 1e-6)
-        f.update(speed=float(s.mean()),
-                 dirx=float(uv[:, 0].mean()),
-                 diry=float(uv[:, 1].mean()),
-                 consist=float(np.linalg.norm(uv.mean(axis=0))))  # 0 chaos..1 orderly
-    else:
-        f.update(speed=0.0, dirx=0.0, diry=0.0, consist=0.0)
-    return f
+    grid = np.zeros(GRID * GRID, dtype=float)
+    grid_x = np.clip((centers_x / width * GRID).astype(int), 0, GRID - 1)
+    grid_y = np.clip((centers_y / height * GRID).astype(int), 0, GRID - 1)
+    np.add.at(grid, grid_y * GRID + grid_x, 1)
+    feature.update({f"g{i}": float(grid[i]) for i in range(GRID * GRID)})
+    return feature
 
 
-class FeatureBuffer:
-    """Rolling history; flattens it into one model-ready vector."""
-
-    def __init__(self, window):
-        self.hist, self.window = deque(), window
-
-    def push(self, feat, t):
-        self.hist.append({**feat, "t": t})
-        while self.hist and t - self.hist[0]["t"] > self.window:
-            self.hist.popleft()
-
-    def ready(self):
-        return len(self.hist) >= 5
-
-    def vector(self, t):
-        now = self.hist[-1]
-
-        def past(sec):
-            for f in reversed(self.hist):
-                if t - f["t"] >= sec:
-                    return f
-            return self.hist[0]
-
-        v  = [now[k] for k in ("count", "cov", "wcount", "speed", "dirx", "diry", "consist")]
-        v += [past(s)["count"] for s in LAGS]
-        v += [now["count"] - past(60)["count"]]                 # 1-min trend
-        v += [now[f"g{i}"] for i in range(GRID * GRID)]
-        return v
+def motion_features(store, live_ids):
+    """Speed and direction from KLT point displacement history only."""
+    velocities = [store.velocity(point_id) for point_id in live_ids]
+    velocities = np.asarray([v for v in velocities if v is not None], dtype=float)
+    if len(velocities) == 0:
+        return {"speed": 0.0, "dirx": 0.0, "diry": 0.0, "consist": 0.0}
+    speed = np.linalg.norm(velocities, axis=1)
+    unit = velocities / (speed[:, None] + 1e-6)
+    mean_unit = unit.mean(axis=0)
+    return {
+        "speed": float(speed.mean()),
+        "dirx": float(mean_unit[0]),
+        "diry": float(mean_unit[1]),
+        "consist": float(np.linalg.norm(mean_unit)),
+    }

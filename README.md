@@ -1,64 +1,26 @@
-# Crowd Density Forecast (YOLO26 → LightGBM)
+# CPU Head-Count Pipeline
 
-Real-time people detection + tracking, converted into uncalibrated crowd
-features, used to forecast crowd density **10 minutes ahead** with LightGBM.
-No camera calibration required — works on a fixed camera with raw pixel boxes.
+This pipeline counts **head-detector boxes**, not tracker survivors. KLT optical
+flow runs at half resolution (0.5 scale, 25% pixel area) to supply speed and direction features.
 
-## Pipeline
+## Model setup
 
-```
-video/webcam ─▶ YOLO26 detect ─▶ ByteTrack track ─▶ features (1 Hz)
-        ─▶ log.csv ─▶ label t+600s ─▶ LightGBM ─▶ live forecast
-```
+Download/export a pretrained single-class YOLOv8 or YOLO11 `.pt` checkpoint
+trained for heads (for example, from the [SCUT-HEAD Roboflow Universe
+project](https://universe.roboflow.com/viet-hoang-head/scut-head-part-a)), place
+it beside the scripts as `head_yolov8.pt`, or update `HEAD_MODEL` in `config.py`.
+The program rejects every checkpoint unless its classes are exactly
+`{0: "head"}`; do not substitute a COCO person detector.
 
-## Install
+## Run
 
 ```bash
 pip install -r requirements.txt
-python -c "from ultralytics import YOLO; YOLO('yolo26n.pt')"   # verify
+python collect.py
 ```
 
-## Usage
-
-```bash
-python collect.py   # 1) gather data  -> log.csv (run on hours of footage)
-python train.py     # 2) train model  -> crowd_gbm.joblib
-python predict.py   # 3) live current density + 10-min forecast
-```
-
-Set `SOURCE` in `config.py` (video path, `0` for webcam, RTSP URL).
-Set `SHOW=False` on headless servers.
-
-## Features (28, all uncalibrated)
-
-| Group | Features | Meaning |
-|---|---|---|
-| Density | `count`, `cov`, `wcount` | raw count; box-pixel coverage; depth-weighted count (boxes lower in frame weigh more) |
-| Motion | `speed`, `dirx`, `diry`, `consist` | mean track speed (px/s); mean direction unit vector; 0=chaotic, 1=orderly flow |
-| History | `lag10..lag120`, `trend` | counts 10/30/60/120 s ago; count change over 60 s |
-| Space | `g0..g15` | 4×4 grid counts — where the crowd is |
-
-## Assumptions & limits
-
-- **Fixed camera, no zoom/PTZ** (pixel-space velocity breaks otherwise).
-- Speed is relative (px/s), not m/s — fine for forecasting.
-- First ~2 minutes after startup have partial lag history (warm-up).
-- Data: collect **several hours** covering different crowd states
-  (empty → busy). A 10-min horizon needs the model to see real inflow/outflow
-  patterns, not just one static scene.
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `No module named 'lap'` / tracker error | `pip install lap` |
-| `yolo26n.pt` not found | `pip install -U ultralytics`, or use `yolov8n.pt` |
-| No display (server) | `SHOW=False` in config |
-| Slow inference | use `n` model + GPU, or lower video FPS |
-
-## Extending
-
-- Inflow/outflow counts at ROI edges (strongest predictor of density change).
-- Time-of-day / day-of-week columns for long deployments.
-- Forecast each grid cell (`g0..g15`) instead of global count.
-- Add `overlap_ratio` (mean pairwise IoU) as an occlusion/saturation proxy.
+`log.csv` has `t` plus `count, cov, wcount, speed, dirx, diry, consist, g0..g15`.
+Each row uses detector density features from a head detection no older than
+0.5 seconds. If inference becomes expensive after five seconds of source video,
+the governor doubles the scheduled detection interval (up to 40 frames), while
+still forcing a detection before a count could become stale.

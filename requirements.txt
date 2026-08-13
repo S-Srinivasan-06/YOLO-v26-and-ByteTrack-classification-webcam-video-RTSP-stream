@@ -1,7 +1,4 @@
 ultralytics>=8.4.0
-lap
 opencv-python
 numpy
-pandas
-scikit-learn
-lightgbm
+torch
