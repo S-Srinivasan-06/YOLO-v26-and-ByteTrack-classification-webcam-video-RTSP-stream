@@ -1,5 +1,7 @@
 venv/
 __pycache__/
 *.pt
+!models/head_yolov8.pt
 *.mp4
 output*/
+data/outputs/output*/

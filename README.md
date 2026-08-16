@@ -12,8 +12,8 @@ The system performs direct **single-class YOLO head detection** combined with **
 - **CPU-Optimized Adaptive Inference**: Built-in adaptive detection governor automatically adjusts detection intervals (`DETECT_EVERY_N` up to `DETECT_EVERY_N_MAX`) under heavy CPU loads while enforcing a freshness deadline (`MAX_COUNT_AGE = 1.0s`).
 - **Feature-Preserved KLT Motion**: Runs optical flow at half resolution (`KLT_SCALE = 0.5`) seeded with Shi-Tomasi corners (`cv2.goodFeaturesToTrack`) inside detected head boxes to compute speed, mean movement vectors, and directional consistency.
 - **Spatial Grid Distribution**: Computes 4×4 spatial distribution density grids (`g0` to `g15`) across the camera frame.
-- **1 Hz CSV Logging**: Periodically exports structured feature vectors to `log.csv` for downstream analysis or time-series forecasting.
-- **Visual Audit Video**: Generates an annotated MP4 video (`output_head_klt.mp4`) displaying detected head bounding boxes, optical flow motion vectors, and real-time status overlays at native video framerate.
+- **1 Hz CSV Logging**: Periodically exports structured feature vectors to `data/outputs/log.csv` for downstream analysis or time-series forecasting.
+- **Visual Audit Video**: Generates an annotated MP4 video (`data/outputs/output_head_klt.mp4`) displaying detected head bounding boxes, optical flow motion vectors, and real-time status overlays at native video framerate.
 
 ---
 
@@ -21,12 +21,30 @@ The system performs direct **single-class YOLO head detection** combined with **
 
 ```text
 .
-├── config.py          # Pipeline hyperparameters, detection intervals & KLT parameters
-├── features.py        # Density metrics, spatial grid calculation & velocity store
-├── collect.py         # Main execution script: video capture, YOLO inference, KLT & logging
-├── requirements.txt   # Python package dependencies
-├── codebase.md        # Full codebase reference documentation
-└── README.md          # Project overview and instructions
+├── src/                         # Python pipeline package
+│   ├── __init__.py              # Package initialization
+│   ├── config.py                # Pipeline hyperparameters, paths & tuning constants
+│   ├── features.py              # Density metrics, spatial grid & KLT track velocity store
+│   └── collect.py               # Video capture, YOLO detection, KLT motion & log export
+├── models/                      # Model weights and checkpoints (*.pt)
+│   ├── head_yolov8.pt           # Single-class head detection model checkpoint
+│   ├── yolo26l.pt
+│   ├── yolo26n.pt
+│   ├── yolo26s.pt
+│   └── yolov8m.pt
+├── data/                        # Media assets and pipeline outputs
+│   ├── videos/                  # Input test and sample videos (*.mp4)
+│   │   ├── r1.mp4
+│   │   ├── video.mp4
+│   │   └── jagganath.mp4
+│   └── outputs/                 # Output audit videos and CSV logs
+│       ├── log.csv
+│       ├── output_head_klt.mp4
+│       └── output1/
+├── requirements.txt             # Python package dependencies
+├── .gitignore                   # Git ignore rules for virtualenvs, checkpoints & videos
+├── codebase.md                  # Full codebase reference documentation
+└── README.md                    # Project overview and instructions
 ```
 
 ---
@@ -57,20 +75,20 @@ The system performs direct **single-class YOLO head detection** combined with **
 
 ## Model Setup
 
-Download a pretrained single-class YOLOv8/YOLO11 head detection checkpoint (e.g. trained on SCUT-HEAD or CrowdHuman-heads) and place it in the root directory as `head_yolov8.pt`, or configure `HEAD_MODEL` in `config.py`.
+Download a pretrained single-class YOLOv8/YOLO11 head detection checkpoint (e.g. trained on SCUT-HEAD or CrowdHuman-heads) and place it in the `models/` directory as `models/head_yolov8.pt`, or configure `HEAD_MODEL` in `src/config.py`.
 
 > **Note**: The pipeline validates the model on load and requires single-class head detection (`names == {0: "head"}`). Standard COCO 80-class models are not accepted.
 
 ---
 
-## Configuration (`config.py`)
+## Configuration (`src/config.py`)
 
-Key parameters can be adjusted directly in `config.py`:
+Key parameters can be adjusted directly in `src/config.py`:
 
 | Parameter | Default | Description |
 |---|---|---|
-| `SOURCE` | `"r1.mp4"` | Input video file path, webcam index, or RTSP stream URL |
-| `HEAD_MODEL` | `"head_yolov8.pt"` | Path to single-class YOLO head weights |
+| `SOURCE` | `"data/videos/r1.mp4"` | Input video file path, webcam index, or RTSP stream URL |
+| `HEAD_MODEL` | `"models/head_yolov8.pt"` | Path to single-class YOLO head weights |
 | `CONF` | `0.05` | Confidence threshold for head detection |
 | `IOU` | `0.70` | NMS IoU threshold |
 | `IMGSZ` | `832` | Detection image resolution (preserves distant heads) |
@@ -79,10 +97,10 @@ Key parameters can be adjusted directly in `config.py`:
 | `MAX_COUNT_AGE` | `1.0` | Max seconds before a fresh detection is forced |
 | `KLT_SCALE` | `0.5` | Resolution scale factor for KLT optical flow |
 | `KLT_FEATURES_PER_HEAD` | `4` | Target optical flow corner points per head |
-| `OUTPUT_VIDEO` | `"output_head_klt.mp4"` | Filepath for visual audit MP4 |
+| `OUTPUT_VIDEO` | `"data/outputs/output_head_klt.mp4"` | Filepath for visual audit MP4 |
 | `OUTPUT_EVERY_N` | `1` | Frame write cadence for the output video |
 | `LOG_INTERVAL` | `1.0` | CSV log interval in seconds (1 Hz) |
-| `LOG_CSV` | `"log.csv"` | Output CSV log path |
+| `LOG_CSV` | `"data/outputs/log.csv"` | Output CSV log path |
 
 ---
 
@@ -91,15 +109,14 @@ Key parameters can be adjusted directly in `config.py`:
 Run the main pipeline:
 
 ```bash
-python collect.py
+python src/collect.py
+```
+*Or execute as a module:*
+```bash
+python -m src.collect
 ```
 
-During execution, the script processes the video stream, calculates real-time motion and density features, logs rows to `log.csv`, and saves the annotated audit video.
-
-Upon completion, benchmark telemetry is printed:
-```text
-benchmark: wall=73.47s video=61.53s ratio=1.194 detection_frames=62 klt_frames=1846 rows=62 klt_min=149 klt_median=233 video=output_head_klt.mp4
-```
+During execution, the script processes the video stream, calculates real-time motion and density features, logs rows to `data/outputs/log.csv`, and saves the annotated audit video to `data/outputs/output_head_klt.mp4`.
 
 ---
 
