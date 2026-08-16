@@ -1,15 +1,6 @@
 venv/
-.venv/
 __pycache__/
-*.py[cod]
-.vscode/
-.idea/
-.DS_Store
-*.log
 *.pt
-*.onnx
-*.engine
 log.csv
 *.mp4
 output*/
-crowd_gbm.joblib
