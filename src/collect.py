@@ -140,10 +140,10 @@ def draw_overlay(frame, boxes, points, point_ids, previous_lookup, count):
                 cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv2.LINE_AA)
     cv2.putText(canvas, f"people (heads)={count}", (16, 36),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(canvas, f"KLT motion samples={len(points)} (not people)", (16, 70),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 3, cv2.LINE_AA)
-    cv2.putText(canvas, f"KLT motion samples={len(points)} (not people)", (16, 70),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 220, 255), 1, cv2.LINE_AA)
+    text = f"KLT motion samples={len(points)} (not people)"
+    # Same thickness for both to avoid OpenCV character spacing bug on fractional font scales
+    cv2.putText(canvas, text, (17, 71), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 1, cv2.LINE_AA)
+    cv2.putText(canvas, text, (16, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 220, 255), 1, cv2.LINE_AA)
     return canvas
 
 
@@ -243,6 +243,15 @@ def main():
         f"klt_min={klt_min} klt_median={klt_median} video={C.OUTPUT_VIDEO}"
     )
 
+# --- NEW AUTOMATION CODE BEGINS HERE ---
+    import subprocess
+    print("\n--- Generating ML Metrics (metric.csv) ---")
+    try:
+        # sys.executable ensures it uses your active (venv) Python
+        subprocess.run([sys.executable, "tools/log_to_metrics.py"], check=True)
+    except Exception as e:
+        print(f"Failed to generate metric.csv automatically: {e}")
+    # --- NEW AUTOMATION CODE ENDS HERE ---
 
 if __name__ == "__main__":
     main()
