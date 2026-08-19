@@ -2,7 +2,6 @@ venv/
 __pycache__/
 *.pt
 !models/head_yolov8.pt
-*.mp4
 models/*_openvino_model/
 models/*.onnx
 models/*.xml
