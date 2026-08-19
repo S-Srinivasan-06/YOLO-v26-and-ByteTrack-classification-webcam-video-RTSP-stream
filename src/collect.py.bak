@@ -31,21 +31,18 @@ KLT_PARAMS = dict(
 
 def load_head_model():
     """Load only an exact single-class head model, never a COCO person model."""
-    if not os.path.exists(C.HEAD_MODEL):
+    if not os.path.isfile(C.HEAD_MODEL):
         raise FileNotFoundError(
             f"Head checkpoint not found: {C.HEAD_MODEL}. Download a pretrained "
-            "single-class SCUT-HEAD/CrowdHuman-heads YOLO checkpoint or export "
-            "an OpenVINO/ONNX model first."
+            "single-class SCUT-HEAD/CrowdHuman-heads YOLO .pt checkpoint first."
         )
-
     model = YOLO(C.HEAD_MODEL)
     names = {int(key): str(value).strip().lower() for key, value in model.names.items()}
-
     if names != {0: "head"}:
         raise ValueError(
-            f"Refusing {C.HEAD_MODEL}: expected model.names == {{0: 'head'}}, got {names}."
+            f"Refusing {C.HEAD_MODEL}: expected model.names == {{0: 'head'}}, got {names}. "
+            "A COCO person model cannot be used as a head detector."
         )
-
     return model
 
 

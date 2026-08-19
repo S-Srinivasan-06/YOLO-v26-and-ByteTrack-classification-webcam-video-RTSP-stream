@@ -75,3 +75,15 @@ The `metric.csv` file generates a comprehensive dataset containing the raw track
 | **`g0` ... `g15`** | **Raw Grid Matrix** | 16 individual columns (`g0`, `g1`, `g2` ... `g15`) representing raw head counts inside a 4x4 spatial grid. |
 
 *(Note: Grid columns `g0`-`g15` remain raw unless the script is explicitly run with the `--smooth-grid` flag, which will additionally generate `_sma`, `_res`, `_std`, and `_z` features for all 16 spatial zones).*
+
+## Recent Architecture & Optimization Updates
+
+The pipeline has been heavily optimized for CPU inference latency (`wall_time / video_duration <= 0.667` goal):
+
+1. **Model Format**: Switched from PyTorch (`.pt`) to **ONNX** (`head_yolov8.onnx`). Inference is now executed using `onnxruntime` (`CPUExecutionProvider`), which yields significant speedups over native PyTorch on CPUs.
+2. **Resolution Tuning**: `IMGSZ` was reduced to **512** to balance detection accuracy in dense crowds against processing speed.
+3. **Detection Cadence**: 
+   - YOLO detection is run less frequently (`DETECT_EVERY_N = 60`, up to `120`).
+   - `MAX_COUNT_AGE = 2.0` ensures the detector fires at least every 2 seconds to keep counts fresh.
+4. **KLT Tracking Cost**: Optical flow resolution was scaled down (`KLT_SCALE = 0.4`), significantly reducing the OpenCV motion-tracking overhead while preserving directional statistics.
+5. **Output I/O**: Diagnostic video overlay generation skips more frames (`OUTPUT_EVERY_N = 3`).
