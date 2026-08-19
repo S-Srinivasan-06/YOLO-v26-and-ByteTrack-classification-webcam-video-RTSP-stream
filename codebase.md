@@ -3,30 +3,34 @@
 ## Directory Structure
 
 ```text
-c:/Coding/python/yolo/
 ├── src/                         # Python pipeline package
 │   ├── __init__.py              # Package initialization
 │   ├── config.py                # Pipeline hyperparameters, paths & tuning constants
 │   ├── features.py              # Density metrics, spatial grid & KLT track velocity store
 │   └── collect.py               # Video capture, YOLO detection, KLT motion & log export
-├── models/                      # Model weights and checkpoints (*.pt)
+├── tools/                       # Pipeline utilities & feature engineering
+│   └── log_to_metrics.py        # Computes rolling window statistics (SMA, residuals, STD, Z-score)
+├── models/                      # Model weights, checkpoints, ONNX & OpenVINO exports
 │   ├── head_yolov8.pt           # Single-class head detection model checkpoint
-│   ├── yolo26l.pt
-│   ├── yolo26n.pt
-│   ├── yolo26s.pt
-│   └── yolov8m.pt
+│   ├── head_yolov8s_keremberke.pt # Downloaded head detection model checkpoint
+│   ├── head_yolov8.onnx         # ONNX exported model
+│   └── head_yolov8_openvino_model/ # OpenVINO exported model directory
 ├── data/                        # Media assets and pipeline outputs
 │   ├── videos/                  # Input test and sample videos (*.mp4)
-│   │   ├── r1.mp4
-│   │   ├── video.mp4
-│   │   └── jagganath.mp4
+│   │   ├── easy.mp4
+│   │   ├── h1.mp4
+│   │   ├── h2.mp4
+│   │   ├── jagganath.mp4
+│   │   └── medium.mp4
 │   └── outputs/                 # Output audit videos and CSV logs
 │       ├── log.csv
-│       ├── output_head_klt.mp4
-│       └── output1/
+│       ├── metric.csv
+│       └── output_head_klt.mp4
+├── download_model.py            # Script to download & validate pretrained head models from HuggingFace
 ├── requirements.txt             # Python package dependencies
-├── .gitignore                   # Git ignore rules for virtualenvs, checkpoints & videos
+├── .gitignore                   # Git ignore rules for virtualenvs, checkpoints & formats
 ├── README.md                    # Project documentation & usage instructions
+├── readme2.md                   # Additional project documentation
 └── codebase.md                  # Comprehensive codebase documentation
 ```
 
