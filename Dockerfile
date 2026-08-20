@@ -1,27 +1,26 @@
 FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PORT=8000
 
-# Install OpenCV and video decoding system dependencies
+# Install system dependencies required for OpenCV, video codecs, and OpenVINO
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
-    libgomp1 \
     ffmpeg \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
+# Copy source code
 COPY . .
 
-# Pre-download and export OpenVINO model at build time
+# Download & export OpenVINO model at build time
 RUN python setup_model.py
 
 EXPOSE 8000
