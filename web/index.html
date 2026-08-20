@@ -138,6 +138,7 @@
     </div>
     
     <div class="flex items-center gap-3">
+      <button id="btn_backend" class="neo-btn-dark px-3 py-2 text-xs">API Server</button>
       <button id="btn_history" class="neo-btn-dark px-4 py-2 text-xs">History</button>
       <button id="btn_pause" class="neo-btn-dark px-4 py-2 text-xs hidden">Pause</button>
       <button id="btn_start" class="neo-btn px-5 py-2 text-xs">Start Analysis</button>
@@ -366,6 +367,10 @@
   </div>
 
   <script>
+    let BACKEND_URL = localStorage.getItem('crowdshield_backend') || '';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const api = path => (isLocal || !BACKEND_URL ? '' : BACKEND_URL.replace(/\/+$/, '')) + path;
+
     let activeSource = { type: 'file', val: '' };
     let roiPoints = [];
     let schemaPresets = {};
@@ -395,7 +400,7 @@
     linkInputs('RISK_COUNT_FLOOR');
 
     function pushParam(key, value) {
-      fetch('/api/config', {
+      fetch(api('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { [key]: value } })
@@ -445,7 +450,7 @@
       const fd = new FormData();
       fd.append('file', file);
       $('file_label').textContent = 'Uploading ' + file.name + '...';
-      fetch('/api/upload', { method: 'POST', body: fd })
+      fetch(api('/api/upload'), { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
           activeSource.val = data.filepath;
@@ -532,7 +537,7 @@
 
     function syncROIBoundary() {
       const polygon = roiPoints.length >= 3 ? roiPoints : null;
-      fetch('/api/config', {
+      fetch(api('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roi_polygon: polygon })
@@ -627,7 +632,7 @@
     // Overlay Toggles
     ['boxes', 'ids', 'vel'].forEach(k => {
       $(`chk_${k}`).onchange = () => {
-        fetch('/api/overlays', {
+        fetch(api('/api/overlays'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -642,7 +647,7 @@
     // Session Controls (Start / Pause / Stop)
     $('btn_start').onclick = () => {
       const src = activeSource.type === 'file' ? (activeSource.val || 'data/videos/easy.mp4') : $('src_val').value;
-      fetch('/api/session/start', {
+      fetch(api('/api/session/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -652,7 +657,7 @@
         })
       }).then(r => r.json()).then(res => {
         if (!res.error) {
-          $('video_feed').src = '/video?' + Date.now();
+          $('video_feed').src = api('/video?') + Date.now();
           setRunningState(true);
         } else {
           alert(res.error);
@@ -662,12 +667,12 @@
 
     $('btn_pause').onclick = () => {
       const isPaused = $('btn_pause').textContent === 'Resume';
-      fetch(isPaused ? '/api/session/resume' : '/api/session/pause', { method: 'POST' })
+      fetch(api(isPaused ? '/api/session/resume' : '/api/session/pause'), { method: 'POST' })
         .then(() => $('btn_pause').textContent = isPaused ? 'Pause' : 'Resume');
     };
 
     $('btn_stop').onclick = () => {
-      fetch('/api/session/stop', { method: 'POST' }).then(() => setRunningState(false));
+      fetch(api('/api/session/stop'), { method: 'POST' }).then(() => setRunningState(false));
     };
 
     function setRunningState(running) {
@@ -678,7 +683,7 @@
     }
 
     // Presets
-    fetch('/api/config/schema').then(r => r.json()).then(data => {
+    fetch(api('/api/config/schema')).then(r => r.json()).then(data => {
       schemaPresets = data.presets || {};
     });
 
@@ -692,11 +697,21 @@
         if (rng) rng.value = val;
         if (num) num.value = val;
       });
-      fetch('/api/config', {
+      fetch(api('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: p })
       });
+    };
+
+    // Backend Endpoint Configurator
+    $('btn_backend').onclick = () => {
+      const cur = localStorage.getItem('crowdshield_backend') || (isLocal ? 'http://localhost:8000' : '');
+      const input = prompt('Enter CrowdShield Python backend URL (e.g. https://your-server.railway.app or http://localhost:8000):', cur);
+      if (input !== null) {
+        localStorage.setItem('crowdshield_backend', input.trim());
+        location.reload();
+      }
     };
 
     // History Modal
@@ -707,7 +722,7 @@
     $('btn_close_history').onclick = () => $('history_modal').classList.add('hidden');
 
     function loadHistory() {
-      fetch('/api/runs').then(r => r.json()).then(runs => {
+      fetch(api('/api/runs')).then(r => r.json()).then(runs => {
         const hl = $('history_list');
         if (!runs || runs.length === 0) {
           hl.innerHTML = '<p class="text-xs text-neutral-500 text-center py-4 uppercase">No completed runs recorded yet.</p>';
@@ -720,10 +735,10 @@
               <div class="text-[11px] text-neutral-400 mt-1 uppercase">Duration: ${r.elapsed_sec}s | Peak: ${r.peak_crowd} heads | Max Risk: ${(r.max_risk*100).toFixed(0)}%</div>
             </div>
             <div class="flex gap-3 font-black text-[11px] uppercase">
-              <a href="/api/runs/${r.run_id}/download/csv" class="text-white hover:underline border-b border-white">CSV</a>
-              <a href="/api/runs/${r.run_id}/download/plot" class="text-white hover:underline border-b border-white">Plot</a>
-              <a href="/api/runs/${r.run_id}/download/video" class="text-white hover:underline border-b border-white">Video</a>
-              <a href="/api/runs/${r.run_id}/download/summary" class="text-neutral-400 hover:underline border-b border-neutral-400">JSON</a>
+              <a href="${api('/api/runs/' + r.run_id + '/download/csv')}" class="text-white hover:underline border-b border-white">CSV</a>
+              <a href="${api('/api/runs/' + r.run_id + '/download/plot')}" class="text-white hover:underline border-b border-white">Plot</a>
+              <a href="${api('/api/runs/' + r.run_id + '/download/video')}" class="text-white hover:underline border-b border-white">Video</a>
+              <a href="${api('/api/runs/' + r.run_id + '/download/summary')}" class="text-neutral-400 hover:underline border-b border-neutral-400">JSON</a>
             </div>
           </div>
         `).join('');
@@ -731,7 +746,7 @@
     }
 
     // SSE Metrics Listener
-    const sse = new EventSource('/stream');
+    const sse = new EventSource(api('/stream'));
     sse.onmessage = e => {
       const data = JSON.parse(e.data);
       const m = data.metrics || {};
