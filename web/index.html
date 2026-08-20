@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CROWDSHIELD — Real-Time Vision Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Raleway', sans-serif !important;
+      border-radius: 0px !important;
+    }
+    :root {
+      --bg-black: #000000;
+      --bg-panel: #111111;
+      --bg-panel-alt: #1a1a1a;
+      --border-white: #ffffff;
+      --border-gray: #333333;
+      --border-muted: #555555;
+    }
+    body {
+      background-color: var(--bg-black);
+      color: #ffffff;
+    }
+    .neo-box {
+      background-color: var(--bg-panel);
+      border: 2px solid var(--border-white);
+      box-shadow: 4px 4px 0px #ffffff;
+    }
+    .neo-box-gray {
+      background-color: var(--bg-panel);
+      border: 2px solid var(--border-gray);
+      box-shadow: 3px 3px 0px #333333;
+    }
+    .neo-btn {
+      background-color: #ffffff;
+      color: #000000;
+      border: 2px solid #ffffff;
+      font-weight: 800;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0px #888888;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+    }
+    .neo-btn:hover {
+      background-color: #e5e5e5;
+      box-shadow: 2px 2px 0px #888888;
+      transform: translate(1px, 1px);
+    }
+    .neo-btn:active {
+      box-shadow: 0px 0px 0px #888888;
+      transform: translate(3px, 3px);
+    }
+    .neo-btn-dark {
+      background-color: #1a1a1a;
+      color: #ffffff;
+      border: 2px solid var(--border-gray);
+      font-weight: 700;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0px #333333;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+    }
+    .neo-btn-dark:hover {
+      background-color: #262626;
+      border-color: #ffffff;
+      box-shadow: 2px 2px 0px #ffffff;
+      transform: translate(1px, 1px);
+    }
+    .neo-input {
+      background-color: #000000;
+      border: 2px solid var(--border-gray);
+      color: #ffffff;
+    }
+    .neo-input:focus {
+      border-color: #ffffff;
+      outline: none;
+    }
+    /* Neobrutalist Range Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #222222;
+      height: 8px;
+      border: 1px solid var(--border-muted);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      background: #ffffff;
+      border: 2px solid #000000;
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      background: #ffffff;
+      border: 2px solid #000000;
+      cursor: pointer;
+    }
+    /* Strictly 2-color Risk Stages */
+    .st-NORMAL { background: #000000; color: #ffffff; border: 2px solid #ffffff; }
+    .st-WATCH { background: #262626; color: #ffffff; border: 2px solid #ffffff; }
+    .st-WARNING { background: #525252; color: #ffffff; border: 2px solid #ffffff; }
+    .st-CRITICAL { background: #ffffff; color: #000000; border: 2px solid #000000; font-weight: 900; }
+
+    /* Custom Checkbox */
+    input[type=checkbox] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      background: #000000;
+      cursor: pointer;
+      display: inline-grid;
+      place-content: center;
+    }
+    input[type=checkbox]:checked {
+      background: #ffffff;
+    }
+    input[type=checkbox]:checked::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #000000;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-6 min-h-screen overflow-y-auto flex flex-col gap-6">
+
+  <!-- Top Navigation Header -->
+  <header class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b-2 border-white">
+    <div class="flex items-center gap-4">
+      <h1 class="text-2xl md:text-3xl font-black tracking-widest text-white uppercase">CROWDSHIELD</h1>
+      <span id="badge_status" class="px-3 py-1 text-xs font-black uppercase tracking-wider border-2 border-white bg-black text-white">IDLE</span>
+      <span id="timer_display" class="text-xs font-bold uppercase tracking-wider text-neutral-400">ELAPSED: 00:00</span>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <button id="btn_history" class="neo-btn-dark px-4 py-2 text-xs">History</button>
+      <button id="btn_pause" class="neo-btn-dark px-4 py-2 text-xs hidden">Pause</button>
+      <button id="btn_start" class="neo-btn px-5 py-2 text-xs">Start Analysis</button>
+      <button id="btn_stop" class="neo-btn-dark px-4 py-2 text-xs border-white hidden">Stop</button>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout (Naturally Scrollable) -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- Left Column: Source Selection, Video Canvas, Overlays Toolbar -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+      
+      <!-- Source Ingestion Panel -->
+      <div class="neo-box-gray p-4 flex flex-col gap-3">
+        <div class="text-xs font-black uppercase tracking-wider text-neutral-400 border-b border-neutral-700 pb-2">
+          Input Source
+        </div>
+        
+        <div class="grid grid-cols-4 gap-2 text-xs font-bold uppercase">
+          <button id="tab_file" class="p-2 border-2 border-white bg-white text-black text-center">Video File</button>
+          <button id="tab_webcam" class="p-2 border-2 border-neutral-700 bg-black text-neutral-400 hover:border-neutral-400 text-center">Webcam</button>
+          <button id="tab_rtsp" class="p-2 border-2 border-neutral-700 bg-black text-neutral-400 hover:border-neutral-400 text-center">RTSP</button>
+          <button id="tab_yt" class="p-2 border-2 border-neutral-700 bg-black text-neutral-400 hover:border-neutral-400 text-center">YouTube</button>
+        </div>
+
+        <!-- File Upload Area -->
+        <div id="src_file_area" class="flex flex-col gap-2">
+          <div id="dropzone" class="border-2 border-dashed border-neutral-600 hover:border-white p-4 text-center cursor-pointer bg-black transition">
+            <span id="file_label" class="text-xs font-bold uppercase tracking-wider text-neutral-300">
+              Drag & Drop Video (MP4 / WebM) or <span class="text-white underline">Browse</span>
+            </span>
+            <input type="file" id="file_input" class="hidden" accept="video/*">
+          </div>
+          <div id="file_probe" class="text-xs font-mono text-neutral-400 uppercase hidden"></div>
+        </div>
+
+        <!-- Input Box for Webcam/RTSP/YouTube -->
+        <div id="src_input_area" class="hidden flex gap-2">
+          <input type="text" id="src_val" class="flex-1 neo-input px-3 py-2 text-xs font-mono" placeholder="Device index (0) or Stream URL">
+        </div>
+      </div>
+
+      <!-- Live Video Viewport Container -->
+      <div class="relative bg-black border-2 border-white w-full aspect-video flex items-center justify-center overflow-hidden">
+        <img id="video_feed" class="w-full h-full object-contain" alt="Live Feed Viewport">
+        <canvas id="roi_canvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+        
+        <!-- Live Hazard Banner (Strict 2-Color Neobrutalism) -->
+        <div id="risk_banner" class="absolute top-3 left-3 px-4 py-1.5 text-xs font-black uppercase tracking-wider st-NORMAL">
+          NORMAL · 0% (SMA)
+        </div>
+      </div>
+
+      <!-- Decoupled Overlays & ROI Toolbar (Eliminates Glitching & Event Collisions) -->
+      <div class="neo-box-gray p-3 flex flex-wrap items-center justify-between gap-3 text-xs uppercase font-bold">
+        <div class="flex items-center gap-4">
+          <span class="text-neutral-400">Overlays:</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chk_boxes" checked>
+            <span>Boxes</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chk_ids" checked>
+            <span>IDs</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chk_vel" checked>
+            <span>Vectors</span>
+          </label>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <span id="roi_status" class="text-[11px] text-neutral-400 lowercase">click canvas to add ROI polygon points</span>
+          <button id="btn_clear_roi" class="px-2.5 py-1 bg-black border border-white text-white hover:bg-neutral-800 text-[11px] uppercase font-bold">
+            Clear ROI
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Real-Time Metrics & Detailed Parameter Controls -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      
+      <!-- Metrics Dashboard Panel -->
+      <div class="neo-box p-4 flex flex-col gap-3">
+        <div class="text-xs font-black uppercase tracking-wider text-white border-b-2 border-white pb-2 flex justify-between">
+          <span>Telemetry Dynamics</span>
+          <span class="text-neutral-400">SMA Smoothing</span>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">COUNT</div>
+            <div id="m_count" class="text-xl font-black text-white mt-1">-</div>
+          </div>
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">DENSITY</div>
+            <div id="m_dens" class="text-xl font-black text-white mt-1">-</div>
+          </div>
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">PRESSURE</div>
+            <div id="m_pres" class="text-xl font-black text-white mt-1">-</div>
+          </div>
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">TURBULENCE</div>
+            <div id="m_turb" class="text-xl font-black text-white mt-1">-</div>
+          </div>
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">COHERENCE</div>
+            <div id="m_coh" class="text-xl font-black text-white mt-1">-</div>
+          </div>
+          <div class="bg-black border border-neutral-700 p-2">
+            <div class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">RISK SCORE</div>
+            <div id="m_risk" class="text-xl font-black text-white mt-1">0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets Selector -->
+      <div class="neo-box-gray p-3 flex items-center justify-between gap-3 text-xs">
+        <span class="font-bold uppercase tracking-wider text-neutral-300">Preset Profile:</span>
+        <select id="preset_select" class="neo-input px-3 py-1.5 text-xs uppercase font-bold text-white bg-black">
+          <option value="">(Custom)</option>
+          <option value="High-Recall CCTV">High-Recall CCTV</option>
+          <option value="Dense Crowd / Chokepoint">Dense Crowd / Chokepoint</option>
+          <option value="Webcam / Close-Range">Webcam / Close-Range</option>
+          <option value="High-Precision (Strict)">High-Precision (Strict)</option>
+        </select>
+      </div>
+
+      <!-- Full Parameter Controls with Clear Explanations -->
+      <div class="neo-box p-4 flex flex-col gap-4 text-xs">
+        <div class="text-xs font-black uppercase tracking-wider text-white border-b-2 border-white pb-2 flex justify-between">
+          <span>Parameters & Sensitivity</span>
+          <span class="text-neutral-400 text-[10px]">Real-Time Sync</span>
+        </div>
+
+        <!-- CONF Slider -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">Confidence Floor (CONF)</span>
+            <input type="number" id="num_CONF" min="0.001" max="1" step="0.005" value="0.02" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_CONF" min="0.001" max="1" step="0.005" value="0.02" class="w-full">
+          <p class="text-[11px] text-neutral-400">Baseline detection confidence floor. Lower values capture distant small heads; higher values eliminate false positives.</p>
+        </div>
+
+        <!-- IOU Slider -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">NMS IoU Threshold</span>
+            <input type="number" id="num_IOU" min="0.01" max="1" step="0.05" value="0.60" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_IOU" min="0.01" max="1" step="0.05" value="0.60" class="w-full">
+          <p class="text-[11px] text-neutral-400">Non-maximum suppression overlap threshold. Lower values aggressively merge duplicate overlapping head boxes.</p>
+        </div>
+
+        <!-- Centroid Search Scale -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">Kinematic Search Scale</span>
+            <input type="number" id="num_TRACK_MAX_DISPLACEMENT_SCALE" min="0.5" max="10" step="0.5" value="4.0" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_TRACK_MAX_DISPLACEMENT_SCALE" min="0.5" max="10" step="0.5" value="4.0" class="w-full">
+          <p class="text-[11px] text-neutral-400">Centroid search cone radius multiplier relative to head scale. Higher values maintain tracking during fast motion.</p>
+        </div>
+
+        <!-- KDE Gamma -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">KDE Splat Gamma</span>
+            <input type="number" id="num_KDE_GAMMA" min="0.1" max="3" step="0.1" value="0.8" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_KDE_GAMMA" min="0.1" max="3" step="0.1" value="0.8" class="w-full">
+          <p class="text-[11px] text-neutral-400">Gaussian kernel standard deviation factor for continuous spatial crowd density mapping.</p>
+        </div>
+
+        <!-- Pressure Limit -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">Pressure Ceiling P_CRIT (k)</span>
+            <input type="number" id="num_RISK_P_CRIT" min="10" max="2000" step="10" value="450" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_RISK_P_CRIT" min="10" max="2000" step="10" value="450" class="w-full">
+          <p class="text-[11px] text-neutral-400">Helbing crowd pressure saturation ceiling (P = ρ · Var(v), in thousands) representing severe mechanical compression.</p>
+        </div>
+
+        <!-- Density Crush Limit -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">Density Crush Limit (DENS_CRIT)</span>
+            <input type="number" id="num_RISK_DENS_CRIT" min="2" max="50" step="1" value="18" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_RISK_DENS_CRIT" min="2" max="50" step="1" value="18" class="w-full">
+          <p class="text-[11px] text-neutral-400">Critical continuous crowd density threshold for stampede risk calculation.</p>
+        </div>
+
+        <!-- Minimum Crowd Count Floor -->
+        <div class="flex flex-col gap-1 border-t border-neutral-800 pt-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold uppercase tracking-wider text-white">Count Gate Floor</span>
+            <input type="number" id="num_RISK_COUNT_FLOOR" min="0" max="200" step="5" value="35" class="w-16 neo-input text-right px-1.5 py-0.5 font-mono text-xs">
+          </div>
+          <input type="range" id="rng_RISK_COUNT_FLOOR" min="0" max="200" step="5" value="35" class="w-full">
+          <p class="text-[11px] text-neutral-400">Minimum instantaneous crowd count required before activating Watch, Warning, and Critical hazard stages.</p>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- History Drawer Modal (Neobrutalist Black & White) -->
+  <div id="history_modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="neo-box bg-black w-full max-w-2xl max-h-[80vh] flex flex-col p-5">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-white">
+        <h2 class="text-base font-black uppercase tracking-wider text-white">Run History & Artifacts</h2>
+        <button id="btn_close_history" class="text-white hover:text-neutral-300 text-xl font-bold px-2">&times;</button>
+      </div>
+      <div id="history_list" class="flex-1 overflow-y-auto mt-4 flex flex-col gap-3">
+        <p class="text-xs text-neutral-500 text-center py-4 uppercase">No completed runs recorded yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeSource = { type: 'file', val: '' };
+    let roiPoints = [];
+    let schemaPresets = {};
+    let isRunning = false;
+    const $ = id => document.getElementById(id);
+
+    // Linked Sliders + Numbers
+    function linkInputs(param, scale=1) {
+      const rng = $('rng_' + param), num = $('num_' + param);
+      if (!rng || !num) return;
+      rng.addEventListener('input', () => {
+        num.value = rng.value;
+        pushParam(param, parseFloat(rng.value) * scale);
+      });
+      num.addEventListener('input', () => {
+        rng.value = num.value;
+        pushParam(param, parseFloat(num.value) * scale);
+      });
+    }
+
+    linkInputs('CONF');
+    linkInputs('IOU');
+    linkInputs('TRACK_MAX_DISPLACEMENT_SCALE');
+    linkInputs('KDE_GAMMA');
+    linkInputs('RISK_P_CRIT', 1000);
+    linkInputs('RISK_DENS_CRIT');
+    linkInputs('RISK_COUNT_FLOOR');
+
+    function pushParam(key, value) {
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: { [key]: value } })
+      });
+    }
+
+    // Source Tabs (Neobrutalist Styling)
+    function setSourceTab(type) {
+      activeSource.type = type;
+      const tabs = ['file', 'webcam', 'rtsp', 'yt'];
+      tabs.forEach(t => {
+        const btn = $('tab_' + t);
+        if (t === type) {
+          btn.className = 'p-2 border-2 border-white bg-white text-black text-center font-black';
+        } else {
+          btn.className = 'p-2 border-2 border-neutral-700 bg-black text-neutral-400 hover:border-neutral-400 text-center font-bold';
+        }
+      });
+
+      $('src_file_area').classList.toggle('hidden', type !== 'file');
+      $('src_input_area').classList.toggle('hidden', type === 'file');
+
+      if (type === 'webcam') $('src_val').value = '0';
+      if (type === 'rtsp') $('src_val').placeholder = 'rtsp://... or http://...';
+      if (type === 'yt') $('src_val').placeholder = 'https://www.youtube.com/watch?v=...';
+    }
+
+    $('tab_file').onclick = () => setSourceTab('file');
+    $('tab_webcam').onclick = () => setSourceTab('webcam');
+    $('tab_rtsp').onclick = () => setSourceTab('rtsp');
+    $('tab_yt').onclick = () => setSourceTab('yt');
+
+    // Drag & Drop File Upload
+    $('dropzone').onclick = () => $('file_input').click();
+    $('file_input').onchange = e => handleUpload(e.target.files[0]);
+
+    $('dropzone').ondragover = e => { e.preventDefault(); $('dropzone').classList.add('border-white'); };
+    $('dropzone').ondragleave = () => $('dropzone').classList.remove('border-white');
+    $('dropzone').ondrop = e => {
+      e.preventDefault();
+      $('dropzone').classList.remove('border-white');
+      if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
+    };
+
+    function handleUpload(file) {
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      $('file_label').textContent = 'Uploading ' + file.name + '...';
+      fetch('/api/upload', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          activeSource.val = data.filepath;
+          $('file_label').textContent = data.filename;
+          $('file_probe').textContent = `${data.resolution} | ${data.fps} FPS | ${data.duration_sec}s | ${data.size_mb} MB`;
+          $('file_probe').classList.remove('hidden');
+        });
+    }
+
+    // ── Interactive Movable ROI Polygon Editor ──
+    const roiCanvas = $('roi_canvas');
+    const ctx = roiCanvas.getContext('2d');
+    let draggedPointIndex = null;
+    let hoveredPointIndex = null;
+    const HANDLE_RADIUS = 14; // pixels hit radius
+
+    function resizeCanvas() {
+      roiCanvas.width = roiCanvas.parentElement.clientWidth;
+      roiCanvas.height = roiCanvas.parentElement.clientHeight;
+      redrawROI();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 200);
+
+    function getCanvasCoords(e) {
+      const rect = roiCanvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const normX = Math.max(0, Math.min(1, px / roiCanvas.width));
+      const normY = Math.max(0, Math.min(1, py / roiCanvas.height));
+      return { px, py, normX, normY };
+    }
+
+    function findNearPointIndex(px, py) {
+      const W = roiCanvas.width, H = roiCanvas.height;
+      for (let i = 0; i < roiPoints.length; i++) {
+        const ppx = roiPoints[i][0] * W;
+        const ppy = roiPoints[i][1] * H;
+        const dist = Math.hypot(px - ppx, py - ppy);
+        if (dist <= HANDLE_RADIUS) return i;
+      }
+      return -1;
+    }
+
+    function redrawROI() {
+      ctx.clearRect(0, 0, roiCanvas.width, roiCanvas.height);
+      const W = roiCanvas.width, H = roiCanvas.height;
+      if (roiPoints.length === 0) return;
+
+      // Draw Polygon Path & Fill
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(roiPoints[0][0] * W, roiPoints[0][1] * H);
+      for (let i = 1; i < roiPoints.length; i++) {
+        ctx.lineTo(roiPoints[i][0] * W, roiPoints[i][1] * H);
+      }
+      if (roiPoints.length >= 3) {
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fill();
+      }
+      ctx.stroke();
+
+      // Draw Draggable Square Handles at each vertex
+      for (let i = 0; i < roiPoints.length; i++) {
+        const cx = roiPoints[i][0] * W;
+        const cy = roiPoints[i][1] * H;
+        const isHovered = (i === hoveredPointIndex || i === draggedPointIndex);
+
+        const size = isHovered ? 12 : 9;
+        ctx.fillStyle = isHovered ? '#ffffff' : '#e5e5e5';
+        ctx.fillRect(cx - size/2, cy - size/2, size, size);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000000';
+        ctx.strokeRect(cx - size/2, cy - size/2, size, size);
+
+        // Point Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(`P${i+1}`, cx + 7, cy - 7);
+      }
+    }
+
+    function syncROIBoundary() {
+      const polygon = roiPoints.length >= 3 ? roiPoints : null;
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roi_polygon: polygon })
+      });
+      $('roi_status').textContent = roiPoints.length >= 3 
+        ? `ROI active (${roiPoints.length} points — drag handles to reshape)`
+        : roiPoints.length > 0 
+        ? `ROI setup (${roiPoints.length}/3 min points)` 
+        : 'click canvas to add ROI points';
+    }
+
+    roiCanvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return; // Left-click only
+      const { px, py, normX, normY } = getCanvasCoords(e);
+      const idx = findNearPointIndex(px, py);
+
+      if (idx !== -1) {
+        // Start dragging existing vertex
+        draggedPointIndex = idx;
+        roiCanvas.style.cursor = 'grabbing';
+      } else {
+        // Add new vertex point
+        roiPoints.push([normX, normY]);
+        draggedPointIndex = roiPoints.length - 1;
+        redrawROI();
+        syncROIBoundary();
+      }
+    });
+
+    roiCanvas.addEventListener('mousemove', e => {
+      const { px, py, normX, normY } = getCanvasCoords(e);
+
+      if (draggedPointIndex !== null) {
+        // Update dragging position in real time
+        roiPoints[draggedPointIndex] = [normX, normY];
+        redrawROI();
+        roiCanvas.style.cursor = 'grabbing';
+      } else {
+        // Check hover over handles
+        const idx = findNearPointIndex(px, py);
+        hoveredPointIndex = idx;
+        roiCanvas.style.cursor = idx !== -1 ? 'grab' : 'crosshair';
+        redrawROI();
+      }
+    });
+
+    const stopDragging = () => {
+      if (draggedPointIndex !== null) {
+        draggedPointIndex = null;
+        roiCanvas.style.cursor = 'crosshair';
+        redrawROI();
+        syncROIBoundary();
+      }
+    };
+
+    window.addEventListener('mouseup', stopDragging);
+    roiCanvas.addEventListener('mouseleave', () => {
+      hoveredPointIndex = null;
+      redrawROI();
+    });
+
+    // Remove vertex on double-click or right-click
+    roiCanvas.addEventListener('dblclick', e => {
+      const { px, py } = getCanvasCoords(e);
+      const idx = findNearPointIndex(px, py);
+      if (idx !== -1) {
+        roiPoints.splice(idx, 1);
+        redrawROI();
+        syncROIBoundary();
+      }
+    });
+
+    roiCanvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const { px, py } = getCanvasCoords(e);
+      const idx = findNearPointIndex(px, py);
+      if (idx !== -1) {
+        roiPoints.splice(idx, 1);
+        redrawROI();
+        syncROIBoundary();
+      }
+    });
+
+    $('btn_clear_roi').onclick = () => {
+      roiPoints = [];
+      draggedPointIndex = null;
+      hoveredPointIndex = null;
+      redrawROI();
+      syncROIBoundary();
+    };
+
+    // Overlay Toggles
+    ['boxes', 'ids', 'vel'].forEach(k => {
+      $(`chk_${k}`).onchange = () => {
+        fetch('/api/overlays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            boxes: $('chk_boxes').checked,
+            track_ids: $('chk_ids').checked,
+            velocity: $('chk_vel').checked
+          })
+        });
+      };
+    });
+
+    // Session Controls (Start / Pause / Stop)
+    $('btn_start').onclick = () => {
+      const src = activeSource.type === 'file' ? (activeSource.val || 'data/videos/easy.mp4') : $('src_val').value;
+      fetch('/api/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_type: activeSource.type,
+          source: src,
+          roi_polygon: roiPoints.length >= 3 ? roiPoints : null
+        })
+      }).then(r => r.json()).then(res => {
+        if (!res.error) {
+          $('video_feed').src = '/video?' + Date.now();
+          setRunningState(true);
+        } else {
+          alert(res.error);
+        }
+      });
+    };
+
+    $('btn_pause').onclick = () => {
+      const isPaused = $('btn_pause').textContent === 'Resume';
+      fetch(isPaused ? '/api/session/resume' : '/api/session/pause', { method: 'POST' })
+        .then(() => $('btn_pause').textContent = isPaused ? 'Pause' : 'Resume');
+    };
+
+    $('btn_stop').onclick = () => {
+      fetch('/api/session/stop', { method: 'POST' }).then(() => setRunningState(false));
+    };
+
+    function setRunningState(running) {
+      isRunning = running;
+      $('btn_start').classList.toggle('hidden', running);
+      $('btn_pause').classList.toggle('hidden', !running);
+      $('btn_stop').classList.toggle('hidden', !running);
+    }
+
+    // Presets
+    fetch('/api/config/schema').then(r => r.json()).then(data => {
+      schemaPresets = data.presets || {};
+    });
+
+    $('preset_select').onchange = e => {
+      const p = schemaPresets[e.target.value];
+      if (!p) return;
+      Object.keys(p).forEach(k => {
+        const rng = $('rng_' + k), num = $('num_' + k);
+        let val = p[k];
+        if (k === 'RISK_P_CRIT') val = val / 1000;
+        if (rng) rng.value = val;
+        if (num) num.value = val;
+      });
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: p })
+      });
+    };
+
+    // History Modal
+    $('btn_history').onclick = () => {
+      $('history_modal').classList.remove('hidden');
+      loadHistory();
+    };
+    $('btn_close_history').onclick = () => $('history_modal').classList.add('hidden');
+
+    function loadHistory() {
+      fetch('/api/runs').then(r => r.json()).then(runs => {
+        const hl = $('history_list');
+        if (!runs || runs.length === 0) {
+          hl.innerHTML = '<p class="text-xs text-neutral-500 text-center py-4 uppercase">No completed runs recorded yet.</p>';
+          return;
+        }
+        hl.innerHTML = runs.map(r => `
+          <div class="bg-neutral-950 p-3 border-2 border-neutral-700 flex items-center justify-between text-xs">
+            <div>
+              <div class="font-black text-white uppercase">${r.run_id} <span class="text-[10px] text-neutral-400 font-normal">(${r.source})</span></div>
+              <div class="text-[11px] text-neutral-400 mt-1 uppercase">Duration: ${r.elapsed_sec}s | Peak: ${r.peak_crowd} heads | Max Risk: ${(r.max_risk*100).toFixed(0)}%</div>
+            </div>
+            <div class="flex gap-3 font-black text-[11px] uppercase">
+              <a href="/api/runs/${r.run_id}/download/csv" class="text-white hover:underline border-b border-white">CSV</a>
+              <a href="/api/runs/${r.run_id}/download/plot" class="text-white hover:underline border-b border-white">Plot</a>
+              <a href="/api/runs/${r.run_id}/download/video" class="text-white hover:underline border-b border-white">Video</a>
+              <a href="/api/runs/${r.run_id}/download/summary" class="text-neutral-400 hover:underline border-b border-neutral-400">JSON</a>
+            </div>
+          </div>
+        `).join('');
+      });
+    }
+
+    // SSE Metrics Listener
+    const sse = new EventSource('/stream');
+    sse.onmessage = e => {
+      const data = JSON.parse(e.data);
+      const m = data.metrics || {};
+      const status = data.status || 'IDLE';
+      
+      $('badge_status').textContent = status;
+      $('badge_status').className = `px-3 py-1 text-xs font-black uppercase tracking-wider border-2 border-white ${
+        status === 'RUNNING' ? 'bg-white text-black' :
+        status === 'PAUSED' ? 'bg-neutral-800 text-white' :
+        'bg-black text-white'
+      }`;
+
+      if (status === 'COMPLETED' && isRunning) {
+        setRunningState(false);
+      }
+
+      // Elapsed Timer
+      const elap = data.elapsed || 0;
+      const elapM = String(Math.floor(elap / 60)).padStart(2, '0');
+      const elapS = String(Math.floor(elap % 60)).padStart(2, '0');
+      $('timer_display').textContent = `ELAPSED: ${elapM}:${elapS}`;
+
+      // Metrics
+      $('m_count').textContent = (m.count_sma || m.count || 0).toFixed(0);
+      $('m_dens').textContent = (m.peak_density_sma || 0).toFixed(1);
+      $('m_pres').textContent = ((m.max_pressure_sma || 0) / 1000).toFixed(0) + 'k';
+      $('m_turb').textContent = (m.turbulence_index_sma || 0).toFixed(1);
+      $('m_coh').textContent = (m.flow_coherence_sma || 0).toFixed(2);
+      
+      const risk = m.risk_score_sma || 0;
+      $('m_risk').textContent = risk.toFixed(2);
+      
+      const banner = $('risk_banner');
+      const stage = m.alert_name || 'NORMAL';
+      banner.className = `absolute top-3 left-3 px-4 py-1.5 text-xs font-black uppercase tracking-wider st-${stage}`;
+      banner.textContent = `${stage} · ${(risk * 100).toFixed(0)}% (SMA)`;
+    };
+  </script>
+</body>
+</html>

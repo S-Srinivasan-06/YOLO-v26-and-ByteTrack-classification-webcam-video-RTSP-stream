@@ -1,8 +1,47 @@
-venv/
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pt
-!models/head_yolov8.pt
-models/*_openvino_model/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+
+# IDE / Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary & Test Logs & Internal References
+*.log
+scratch/
+codebase.md
+.pytest_cache/
+
+# Model Checkpoints (Managed by setup_model.py)
+models/*.pt
 models/*.onnx
-models/*.xml
-models/*.bin
+models/*_openvino_model/
+!models/.gitkeep
+
+# Session Runs & Output Artifacts
+data/runs/*
+!data/runs/.gitkeep
+
+# Uploaded Files
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Legacy Outputs
+data/outputs/*
+!data/outputs/.gitkeep
+
+# Test Video Files
+data/videos/*.mp4
+data/videos/*.avi
+data/videos/*.mov
+data/videos/*.mkv
+!data/videos/.gitkeep

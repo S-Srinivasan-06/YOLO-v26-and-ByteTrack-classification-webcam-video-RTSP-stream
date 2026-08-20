@@ -1,1 +1,1 @@
-"""Head detection and KLT motion tracking pipeline package."""
+"""CrowdShield L1 Vision Pipeline."""
