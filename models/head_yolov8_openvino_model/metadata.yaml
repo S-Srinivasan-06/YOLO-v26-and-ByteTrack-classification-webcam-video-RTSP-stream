@@ -1,0 +1,24 @@
+description: Ultralytics head_YOLOv8 model trained on mydata.yaml
+author: Ultralytics
+date: '2026-08-20T00:33:11.309561+05:30'
+version: 8.4.118
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+head: Detect
+batch: 1
+imgsz:
+- 1280
+- 1280
+names:
+  0: head
+args:
+  data: null
+  batch: 1
+  fraction: 1.0
+  quantize: 16
+  dynamic: true
+  nms: false
+channels: 3
+end2end: false
